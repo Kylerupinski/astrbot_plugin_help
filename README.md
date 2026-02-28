@@ -14,7 +14,7 @@ _✨ [astrbot](https://github.com/AstrBotDevs/AstrBot) 帮助插件 ✨_
 
 </div>
 
-# 更好的帮助
+# astrbot_plugin_help
 
 ## ⚠️⚠️⚠️ 旧版更新请注意 ⚠️⚠️⚠️
 - 尽可能卸载后重新从插件市场安装本插件（卸载旧版时请勾选 `同时删除插件配置文件`）

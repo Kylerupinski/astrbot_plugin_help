@@ -1,6 +1,7 @@
 import io
 import os
 import textwrap
+from pathlib import Path
 from typing import Dict, List, Tuple, Any
 
 import numpy as np
@@ -36,6 +37,8 @@ class AstrBotHelpDrawer:
     IMG_WIDTH = 800
     PADDING = 25
     TOP_AREA_HEIGHT = 120
+    TOP_AREA_MIN_NO_LOGO = 80
+    HEADER_TEXT_GAP = 5
     LOGO_TARGET_HEIGHT = 65
     SECTION_HEADER_HEIGHT = 50
     SECTION_MARKER_SIZE = 18
@@ -60,8 +63,59 @@ class AstrBotHelpDrawer:
     # ---------------- 构造函数 ----------------
     def __init__(self, config: AstrBotConfig) -> None:
         self.config = config
+        self.plugin_display_name = self._load_plugin_display_name()
+        self.plugin_version = self._load_plugin_version()
+        self.logo_enabled = getattr(self.config, "logo_enable", True)
+        self.title_text, self.subtitle_text = self._get_header_texts()
         self._load_fonts()
-        self._load_logo()
+        self.resized_logo = None
+        if self.logo_enabled:
+            self._load_logo()
+        self.top_area_height = self._calculate_top_area_height()
+
+    def _get_header_texts(self) -> Tuple[str, str]:
+        title_text = (
+            str(getattr(self.config, "title_help", "") or "").strip()
+            or "AstrBot 命令帮助"
+        )
+        subtitle_text = (
+            str(getattr(self.config, "title_desc", "") or "").strip()
+            or "可用插件及指令列表"
+        )
+        return title_text, subtitle_text
+
+    def _calculate_top_area_height(self) -> int:
+        if self.logo_enabled:
+            return self.TOP_AREA_HEIGHT
+
+        title_h = self.font_title.getbbox(self.title_text)[3] - self.font_title.getbbox(self.title_text)[1]
+        subtitle_h = self.font_subtitle.getbbox(self.subtitle_text)[3] - self.font_subtitle.getbbox(self.subtitle_text)[1]
+        computed = self.PADDING + title_h + self.HEADER_TEXT_GAP + subtitle_h + self.PADDING
+        return max(self.TOP_AREA_MIN_NO_LOGO, computed)
+
+    @staticmethod
+    def _read_metadata_value(field_name: str) -> str:
+        metadata_path = Path(__file__).resolve().with_name("metadata.yaml")
+        try:
+            for line in metadata_path.read_text(encoding="utf-8").splitlines():
+                stripped = line.strip()
+                if not stripped.startswith(f"{field_name}:"):
+                    continue
+                return stripped.split(":", 1)[1].split("#", 1)[0].strip().strip("\"'")
+        except Exception as e:
+            logger.warning(f"读取 metadata.yaml 字段 {field_name} 失败: {e}")
+        return ""
+
+    def _load_plugin_display_name(self) -> str:
+        return self._read_metadata_value("display_name") or "Better_help"
+
+    def _load_plugin_version(self) -> str:
+        value = self._read_metadata_value("version")
+        if value:
+            if value.lower().startswith("v"):
+                value = value[1:]
+            return value
+        return "0.0.0"
 
     # ---------------- 字体 & Logo ----------------
     def _load_fonts(self) -> None:
@@ -294,7 +348,7 @@ class AstrBotHelpDrawer:
         draw,
     ) -> List[Dict]:
         layout_info = []
-        y_offset = self.TOP_AREA_HEIGHT + self.PADDING
+        y_offset = self.top_area_height + self.PADDING
         max_cols = 4
         card_spacing = self.CARD_SPACING
         card_width = (
@@ -467,40 +521,45 @@ class AstrBotHelpDrawer:
             self.COLOR_BACKGROUND_END,
         )
 
-        # 绘制logo
-        if self.resized_logo:
+        # 绘制标题与简介（可选 logo）
+        title_text = self.title_text
+        subtitle_text = self.subtitle_text
+
+        if self.logo_enabled and self.resized_logo:
             img.paste(
                 self.resized_logo, (self.PADDING, self.PADDING), self.resized_logo
             )
-            title_text = "AstrBot 命令帮助"
-            subtitle_text = "可用插件及指令列表"
             logo_w, logo_h = self.resized_logo.size
             x_start = self.PADDING + logo_w + 15
             y_start_title = self.PADDING
-            y_start_subtitle = (
-                self.PADDING
-                + self.font_title.getbbox(title_text)[3]
-                - self.font_title.getbbox(title_text)[1]
-                + 5
-            )
-            draw.text(
-                (x_start, y_start_title),
-                title_text,
-                font=self.font_title,
-                fill=self.COLOR_TEXT_HEADER,
-            )
-            draw.text(
-                (x_start, y_start_subtitle),
-                subtitle_text,
-                font=self.font_subtitle,
-                fill=self.COLOR_TEXT_SUBTITLE,
-            )
+        else:
+            x_start = self.PADDING
+            y_start_title = self.PADDING
+
+        y_start_subtitle = (
+            y_start_title
+            + self.font_title.getbbox(title_text)[3]
+            - self.font_title.getbbox(title_text)[1]
+            + self.HEADER_TEXT_GAP
+        )
+        draw.text(
+            (x_start, y_start_title),
+            title_text,
+            font=self.font_title,
+            fill=self.COLOR_TEXT_HEADER,
+        )
+        draw.text(
+            (x_start, y_start_subtitle),
+            subtitle_text,
+            font=self.font_subtitle,
+            fill=self.COLOR_TEXT_SUBTITLE,
+        )
 
         # 绘制卡片
         self._draw_cards(img, layout_info)
 
         # 底部版权
-        footer_text = f"AstrBot v{self.config.version}"
+        footer_text = f"{self.plugin_display_name} v{self.plugin_version}"
         bbox = draw.textbbox((0, 0), footer_text, font=self.font_footer)
         fw = bbox[2] - bbox[0]
         fh = bbox[3] - bbox[1]

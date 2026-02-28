@@ -3,7 +3,7 @@
 
 ![:astrbot_plugin_help](https://count.getloli.com/@:astrbot_plugin_help?theme=minecraft)
 
-# astrbot_plugin_help
+# 更好的帮助
 
 _✨ [astrbot](https://github.com/AstrBotDevs/AstrBot) 帮助插件 ✨_  
 
@@ -14,7 +14,10 @@ _✨ [astrbot](https://github.com/AstrBotDevs/AstrBot) 帮助插件 ✨_
 
 </div>
 
-# astrbot_plugin_help
+# 更好的帮助
+
+## ⚠️⚠️⚠️ 旧版更新请注意 ⚠️⚠️⚠️
+- 尽可能卸载后重新从插件市场安装本插件（卸载旧版时请勾选 `同时删除插件配置文件`）
 
 ## 🤝 介绍
 

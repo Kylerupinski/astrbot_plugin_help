@@ -55,33 +55,7 @@ class AstrBotHelpDrawer:
     CARD_PADDING_TOP = 10
     CARD_PADDING_BOTTOM = 10
     NAME_DESC_SPACING = 12
-
-    # 内置指令文本
-    BUILT_IN_COMMANDS_TEXT = textwrap.dedent("""
-        [System]
-        /t2i : 开关文本转图片
-        /tts : 开关文本转语音
-        /sid : 获取会话 ID
-        /op : 管理员
-        /wl : 白名单
-        /dashboard_update : 更新管理面板(op)
-        /alter_cmd : 设置指令权限(op)
-
-        [大模型]
-        /provider : 大模型提供商
-        /model : 模型列表
-        /ls : 对话列表
-        /new : 创建新对话
-        /switch 序号 : 切换对话
-        /rename 新名字 : 重命名当前对话
-        /del : 删除当前会话对话(op)
-        /reset : 重置 LLM 会话(op)
-        /history : 当前对话的对话记录
-        /persona : 人格情景(op)
-        /tool ls : 函数工具
-        /key : API Key(op)
-        /websearch : 网页搜索
-    """).strip()
+    
 
     # ---------------- 构造函数 ----------------
     def __init__(self, config: AstrBotConfig) -> None:
@@ -127,6 +101,19 @@ class AstrBotHelpDrawer:
     # ---------------- 文本解析 ----------------
     @staticmethod
     def _parse_single_command_list(text_list) -> List[Tuple[str, str | None]]:
+        if isinstance(text_list, list) and text_list and all(
+            isinstance(item, dict) for item in text_list
+        ):
+            commands = []
+            for item in text_list:
+                cmd = str(item.get("command") or "").strip()
+                if not cmd:
+                    continue
+                desc_raw = item.get("desc")
+                desc = str(desc_raw).strip() if desc_raw else None
+                commands.append((cmd, desc.splitlines()[0].strip() if desc else None))
+            return commands
+
         commands = []
         lines = (
             text_list.strip().splitlines()
@@ -168,16 +155,10 @@ class AstrBotHelpDrawer:
     def _parse_plugin_commands_sorted_grouped(
         self, plugin_dict: Dict[str, Any]
     ) -> List[Tuple[str, List[Tuple[str, str | None]]]]:
-        # 是否显示内置指令
-        if getattr(self.config, "show_builtin_cmds", True):
-            built_in_list = self._parse_single_command_list(self.BUILT_IN_COMMANDS_TEXT)
-            built_in_plugin = ("内置指令", built_in_list) if built_in_list else None
-        else:
-            built_in_plugin = None
 
         large_plugins, small_plugins = [], []
         for name, cmds_raw in plugin_dict.items():
-            if name == "内置指令" or not cmds_raw:
+            if not cmds_raw:
                 continue
              # 如果在黑名单里，跳过
             if name in getattr(self.config, "plugin_blacklist", []):
@@ -197,8 +178,7 @@ class AstrBotHelpDrawer:
                 logger.info(f"-> 创建 '简易指令' ({len(all_small)} 条)")
 
         result = []
-        if built_in_plugin:
-            result.append(built_in_plugin)
+
         result.extend(large_plugins)
         if grouped_small_plugin:
             result.append(grouped_small_plugin)
